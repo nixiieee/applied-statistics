@@ -1,4 +1,3 @@
-# test_nist.py
 import pytest
 from scipy.special import erfc as erfc
 from math import sqrt as sqrt
@@ -45,13 +44,25 @@ def test_frequency():
     assert frequency_test(binary_data), "Frequency test failed"
 
 def runs_test(binary_data):
-    runs = 1
-    for i in range(1, len(binary_data)):
-        if binary_data[i] != binary_data[i - 1]:
-            runs += 1
-    total_bits = len(binary_data)
-    expected_runs = (2 * binary_data.count('1') * binary_data.count('0')) / total_bits + 1
-    return abs(runs - expected_runs) / expected_runs >= 0.01
+    one_count = 0
+    vObs = 0
+    length_of_binary_data = len(binary_data)
+
+    tau = 2 / sqrt(length_of_binary_data)
+
+    one_count = binary_data.count('1')
+
+    pi = one_count / length_of_binary_data
+
+    if abs(pi - 0.5) >= tau:
+        return False
+    else:
+        for item in range(1, length_of_binary_data):
+            if binary_data[item] != binary_data[item - 1]:
+                vObs += 1
+        vObs += 1
+        p_value = erfc(abs(vObs - (2 * (length_of_binary_data) * pi * (1 - pi))) / (2 * sqrt(2 * length_of_binary_data) * pi * (1 - pi)))
+    return p_value >= 0.01
 
 def test_runs():
     assert runs_test(binary_data), "Runs test failed"
@@ -63,21 +74,16 @@ def block_frequency_test(binary_data, block_size=128):
     if length_of_bit_string < block_size:
         block_size = length_of_bit_string
 
-    # Compute the number of blocks based on the input given.
     number_of_blocks = floor(length_of_bit_string / block_size)
 
     if number_of_blocks == 1:
-        # For block size M=1, this test degenerates to test 1, the Frequency (Monobit) test.
         return frequency_test(binary_data[0:block_size])
 
-    # Initialized variables
     block_start = 0
     block_end = block_size
     proportion_sum = 0.0
 
-    # Create a for loop to process each block
     for counter in range(number_of_blocks):
-        # Partition the input sequence and get the data for block
         block_data = binary_data[block_start:block_end]
 
         one_count = 0
@@ -94,12 +100,12 @@ def block_frequency_test(binary_data, block_size=128):
     result = 4.0 * block_size * proportion_sum
 
     p_value = gammaincc(number_of_blocks / 2, result / 2)
+    return p_value >= 0.01 
 
 def test_block_frequency():
     assert block_frequency_test(binary_data), "Block Frequency test failed"
 
 def longest_run_of_ones_test(binary_data):
-    # Определяем длину самой длинной последовательности единиц
     max_run = 0
     current_run = 0
     for bit in binary_data:
@@ -112,10 +118,8 @@ def longest_run_of_ones_test(binary_data):
     
     n = len(binary_data)
     
-    # Ожидаемая максимальная длина для случайной строки длиной n
     expected_max_run = floor(log2(n))
-    
-    # Рассчитываем p-value, сравнивая найденный максимальный пробег с ожидаемым
+
     p_value = gammaincc(expected_max_run, max_run / 2)
     
     return p_value >= 0.01
